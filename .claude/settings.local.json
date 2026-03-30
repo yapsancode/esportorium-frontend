@@ -7,7 +7,14 @@
       "Bash(mkdir -p /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app/\\\\\\(auth\\\\\\)/register)",
       "Bash(npx tsc:*)",
       "Bash(npx next:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(ls:*)",
+      "Bash(grep -r \"useEffect\\\\|localStorage\\\\|sessionStorage\" C:UsersisyraDocumentscoding_projectsesportorium-frontendapp --include=*.tsx --include=*.ts)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -rn \"refresh_token\\\\|setAuth\\\\|saveTokens\\\\|getState\" /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app --include=*.tsx --include=*.ts)",
+      "Bash(ls -la /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app/\\\\\\(dashboard\\\\\\)/)",
+      "Bash(npx shadcn@latest add tabs --yes)",
+      "Bash(rm:*)"
     ]
   }
 }

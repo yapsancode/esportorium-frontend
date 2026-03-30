@@ -19,7 +19,9 @@ export function saveTokens(
   refreshToken: string,
 ): void {
   Cookies.set('refresh_token', refreshToken, { sameSite: 'strict' })
-  useAuthStore.getState().setAuth(user, accessToken)
+  const store = useAuthStore.getState()
+  store.setAuth(user, accessToken)
+  store.setLoading(false)
 }
 
 /** Remove the refresh-token cookie and wipe the auth store. */

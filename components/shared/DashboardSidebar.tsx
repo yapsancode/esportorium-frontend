@@ -53,7 +53,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   {
     label: 'Create Tournament',
-    href: '/dashboard/tournaments/new',
+    href: '/dashboard/tournaments/create',
     icon: Plus,
     minRole: 'organizer',
   },
@@ -74,14 +74,9 @@ const NAV_ITEMS: NavItem[] = [
 export function DashboardSidebar() {
   const pathname = usePathname()
   const user = useAuthStore((s) => s.user)
+  const isLoading = useAuthStore((s) => s.isLoading)
   const role = user?.role ?? 'player'
   const [collapsed, setCollapsed] = useState(false)
-
-  const visible = NAV_ITEMS.filter((item) => {
-    if (item.minRole && !hasMinRole(role, item.minRole)) return false
-    if (item.maxRole && !hasMinRole(item.maxRole, role)) return false
-    return true
-  })
 
   return (
     <aside
@@ -103,7 +98,26 @@ export function DashboardSidebar() {
 
       {/* Nav */}
       <nav className="flex flex-1 flex-col gap-0.5 p-2">
-        {visible.map((item) => {
+        {NAV_ITEMS.map((item) => {
+          const isGated = !!(item.minRole || item.maxRole)
+
+          // While auth is loading: show skeleton for role-gated items
+          if (isLoading && isGated) {
+            return (
+              <div
+                key={item.href}
+                className={cn(
+                  'h-9 animate-pulse rounded-lg bg-surface-2',
+                  collapsed ? 'w-8 self-center' : 'w-full',
+                )}
+              />
+            )
+          }
+
+          // Auth resolved: apply role filter
+          if (item.minRole && !hasMinRole(role, item.minRole)) return null
+          if (item.maxRole && !hasMinRole(item.maxRole, role)) return null
+
           const isActive =
             item.href === '/dashboard'
               ? pathname === '/dashboard'

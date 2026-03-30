@@ -115,13 +115,17 @@ function EmptyState({ hasFilters }: { hasFilters: boolean }) {
 // ─── Tournament card ──────────────────────────────────────────────────────────
 
 function TournamentCard({ tournament }: { tournament: Tournament }) {
-  const startDate = new Date(tournament.start_date).toLocaleDateString(
-    undefined,
-    { year: 'numeric', month: 'short', day: 'numeric' },
-  )
+  const startDate = tournament.start_date
+    ? new Date(tournament.start_date).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+    : '—'
 
   return (
-    <Card className="flex flex-col transition-shadow hover:shadow-md">
+    <Link href={`/dashboard/tournaments/${tournament.id}`} className="group">
+    <Card className="flex flex-col transition-shadow group-hover:shadow-md h-full">
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <h2 className="font-display text-lg leading-tight text-text-primary">
@@ -155,10 +159,11 @@ function TournamentCard({ tournament }: { tournament: Tournament }) {
         </div>
 
         <p className="mt-auto pt-2 text-xs text-text-tertiary">
-          by {tournament.organizer.display_name}
+          by {tournament.organizer.display_name ?? tournament.organizer.username}
         </p>
       </CardContent>
     </Card>
+    </Link>
   )
 }
 
@@ -175,12 +180,9 @@ export default function TournamentsPage() {
   const [regionFilter, setRegionFilter] = useState(ALL)
   const [formatFilter, setFormatFilter] = useState(ALL)
 
-  // Same mounted guard as other components
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-
   const user = useAuthStore((s) => s.user)
-  const canCreate = mounted && hasMinRole(user?.role ?? '', 'organizer')
+  const isLoading = useAuthStore((s) => s.isLoading)
+  const canCreate = hasMinRole(user?.role ?? '', 'organizer')
 
   useEffect(() => {
     getTournaments()
@@ -191,7 +193,8 @@ export default function TournamentsPage() {
 
   // Derive unique filter options from the data
   const regions = useMemo(
-    () => [...new Set(tournaments.map((t) => t.region))].sort(),
+    () =>
+      [...new Set(tournaments.map((t) => t.region).filter((r): r is string => r !== null))].sort(),
     [tournaments],
   )
   const formats = useMemo(
@@ -224,17 +227,19 @@ export default function TournamentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-display text-3xl text-text-primary">Tournaments</h1>
-        {canCreate && (
+        {isLoading ? (
+          <div className="h-9 w-40 animate-pulse rounded-md bg-surface-2" />
+        ) : canCreate ? (
           <Button
             asChild
             className="bg-terra text-primary-foreground hover:bg-terra-dark"
           >
-            <Link href="/dashboard/tournaments/new">
+            <Link href="/dashboard/tournaments/create">
               <Plus size={15} />
               Create Tournament
             </Link>
           </Button>
-        )}
+        ) : null}
       </div>
 
       {/* Filter bar */}
