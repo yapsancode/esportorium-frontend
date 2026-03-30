@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx shadcn:*)",
+      "Bash(mkdir -p /c/Users/isyra/Documents/coding_projects/esportorium-frontend/lib/store)",
+      "Bash(mkdir -p /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app/\\\\\\(auth\\\\\\)/login)",
+      "Bash(mkdir -p /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app/\\\\\\(auth\\\\\\)/register)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next:*)",
+      "Bash(node:*)"
+    ]
+  }
+}
