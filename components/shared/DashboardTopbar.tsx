@@ -6,6 +6,17 @@ import { Button } from '@/components/ui/button'
 import { PlanBadge } from '@/components/shared/PlanBadge'
 import { clearTokens } from '@/lib/auth'
 import { useAuthStore } from '@/lib/store/authStore'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 
 const ROLE_LABELS: Record<string, string> = {
   player: 'Player',
@@ -23,7 +34,7 @@ export function DashboardTopbar() {
 
   function handleLogout() {
     clearTokens()
-    router.push('/login')
+    router.replace('/login')
   }
 
   const initial = user?.display_name
@@ -58,15 +69,37 @@ export function DashboardTopbar() {
           </>
         )}
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleLogout}
-          aria-label="Log out"
-          className="text-text-secondary hover:text-destructive"
-        >
-          <LogOut size={16} />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Log out"
+              className="text-text-secondary hover:text-destructive"
+            >
+              <LogOut size={16} />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-surface border-border text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+              <AlertDialogDescription className="text-text-secondary">
+                You will be redirected to the login page.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-border text-text-primary hover:bg-surface-2 hover:text-text-primary">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleLogout}
+                className="bg-terra text-white hover:bg-terra-dark"
+              >
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </header>
   )
