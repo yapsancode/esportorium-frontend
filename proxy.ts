@@ -15,8 +15,6 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasRefreshToken = request.cookies.has('refresh_token')
 
-  console.log('Middleware executed for:', pathname, 'Has refresh token:', hasRefreshToken)
-
   // root redirect
   if (pathname === '/') {
     return NextResponse.redirect(new URL('/login', request.url))
