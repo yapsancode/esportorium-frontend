@@ -11,7 +11,7 @@ function setNoCacheHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasRefreshToken = request.cookies.has('refresh_token')
 
