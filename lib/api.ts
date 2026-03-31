@@ -31,7 +31,15 @@ api.interceptors.response.use(
       _retry?: boolean
     }
 
-    if (error.response?.status !== 401 || original._retry) {
+    // Never intercept auth endpoints — a 401 on /auth/login or /auth/register
+    // is a normal "bad credentials" response, not an expired session.
+    const url = original.url ?? ''
+    const isAuthEndpoint =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/refresh')
+
+    if (error.response?.status !== 401 || original._retry || isAuthEndpoint) {
       return Promise.reject(error)
     }
 
