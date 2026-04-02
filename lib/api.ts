@@ -181,21 +181,40 @@ export async function getTournament(id: string): Promise<Tournament> {
 
 export interface BracketMatch {
   id: string
+  tournament_id: string
   round: number
-  match_number?: number
+  match_number: number
+  format: string
+  games_to_win: number
   participant_1: string | null
   participant_2: string | null
-  score_1: number | null
-  score_2: number | null
+  participant_1_user: { id: string; username: string; display_name: string | null } | null
+  participant_2_user: { id: string; username: string; display_name: string | null } | null
+  winner_id: string | null
+  winner_user: { id: string; username: string; display_name: string | null } | null
+  team_1_wins: number
+  team_2_wins: number
+  score_1: number
+  score_2: number
   status: string
-  winner: string | null
+  scheduled_at: string | null
+  created_at: string
+  updated_at: string
 }
 
-export async function getTournamentBracket(id: string): Promise<BracketMatch[]> {
-  const { data } = await api.get<BracketMatch[] | { matches: BracketMatch[] }>(
-    `/tournaments/${id}/bracket`,
-  )
-  return Array.isArray(data) ? data : data.matches
+export interface BracketRound {
+  round: number
+  matches: BracketMatch[]
+}
+
+export interface BracketResponse {
+  tournament_id: string
+  rounds: BracketRound[]
+}
+
+export async function getTournamentBracket(id: string): Promise<BracketRound[]> {
+  const { data } = await api.get<BracketResponse>(`/tournaments/${id}/bracket`)
+  return data.rounds
 }
 
 export interface Registration {
@@ -226,4 +245,25 @@ export async function registerForTournament(id: string): Promise<void> {
 
 export async function generateBracket(id: string): Promise<void> {
   await api.post(`/tournaments/${id}/bracket/generate`)
+}
+
+export interface UpdateTournamentPayload {
+  name?: string
+  description?: string | null
+  region?: string | null
+  tournament_type?: string
+  venue_name?: string | null
+  venue_address?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  prize_pool?: number | null
+  status?: string
+}
+
+export async function updateTournament(
+  id: string,
+  payload: UpdateTournamentPayload,
+): Promise<Tournament> {
+  const { data } = await api.patch<Tournament>(`/tournaments/${id}`, payload)
+  return data
 }

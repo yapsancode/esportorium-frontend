@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -13,6 +13,7 @@ import {
   Swords,
   RefreshCw,
   Pencil,
+  Loader2,
 } from 'lucide-react'
 import {
   getTournament,
@@ -22,9 +23,11 @@ import {
   generateBracket,
   type Tournament,
   type BracketMatch,
+  type BracketRound,
   type Registration,
 } from '@/lib/api'
 import { useAuthStore } from '@/lib/store/authStore'
+import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -60,6 +63,7 @@ function hasMinRole(userRole: string, minRole: string) {
 const STATUS_STYLES: Record<string, string> = {
   open: 'bg-terra-subtle text-terra border-terra-border',
   ongoing: 'bg-blue-100 text-blue-700 border-blue-200',
+  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
   completed: 'bg-secondary text-text-secondary border-border',
   cancelled: 'bg-destructive/10 text-destructive border-destructive/20',
   draft: 'bg-surface text-text-secondary border-border',
@@ -67,7 +71,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Open',
-  ongoing: 'Ongoing',
+  ongoing: 'In Progress',
+  in_progress: 'In Progress',
   completed: 'Completed',
   cancelled: 'Cancelled',
   draft: 'Draft',
@@ -184,40 +189,42 @@ function PageSkeleton() {
 
 // ─── Bracket round section ────────────────────────────────────────────────────
 
-function MatchCard({
-  match,
-  winner,
-}: {
-  match: BracketMatch
-  winner: string | null
-}) {
-  function participantClass(name: string | null) {
-    if (!name) return 'text-text-tertiary italic'
-    if (winner && name === winner) return 'font-semibold text-terra'
+function participantName(
+  user: { username: string; display_name: string | null } | null,
+) {
+  if (!user) return 'TBD'
+  return user.display_name ?? user.username
+}
+
+function MatchCard({ match }: { match: BracketMatch }) {
+  function participantClass(id: string | null) {
+    if (!id) return 'text-text-tertiary italic'
+    if (match.winner_id && id === match.winner_id) return 'font-semibold text-terra'
+    if (match.winner_id) return 'text-text-tertiary line-through'
     return 'text-text-primary'
   }
 
   return (
     <Card className="w-full">
-      <CardContent className="py-3 px-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-4">
-          <span className={`flex-1 text-sm ${participantClass(match.participant_1)}`}>
-            {match.participant_1 ?? 'TBD'}
+      <CardContent className="py-3 px-4 flex flex-col gap-1">
+        <span className={`text-sm truncate ${participantClass(match.participant_1)}`}>
+          {participantName(match.participant_1_user)}
+        </span>
+
+        <div className="flex items-center gap-2 py-0.5">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-[10px] font-bold tracking-widest text-terra uppercase">VS</span>
+          <span className="text-xs font-mono font-semibold text-text-secondary tabular-nums">
+            {match.team_1_wins} – {match.team_2_wins}
           </span>
-          <span className="text-sm font-mono font-semibold text-text-secondary tabular-nums">
-            {match.score_1 ?? '—'}
-          </span>
+          <div className="flex-1 h-px bg-border" />
         </div>
-        <div className="h-px bg-border" />
-        <div className="flex items-center justify-between gap-4">
-          <span className={`flex-1 text-sm ${participantClass(match.participant_2)}`}>
-            {match.participant_2 ?? 'TBD'}
-          </span>
-          <span className="text-sm font-mono font-semibold text-text-secondary tabular-nums">
-            {match.score_2 ?? '—'}
-          </span>
-        </div>
-        <div className="flex justify-end">
+
+        <span className={`text-sm truncate ${participantClass(match.participant_2)}`}>
+          {participantName(match.participant_2_user)}
+        </span>
+
+        <div className="flex justify-end pt-1">
           <StatusBadge status={match.status} />
         </div>
       </CardContent>
@@ -242,7 +249,7 @@ export default function TournamentDetailPage({
   const [pageLoading, setPageLoading] = useState(true)
   const [pageError, setPageError] = useState<string | null>(null)
 
-  const [bracket, setBracket] = useState<BracketMatch[] | null>(null)
+  const [bracket, setBracket] = useState<BracketRound[] | null>(null)
   const [bracketLoading, setBracketLoading] = useState(false)
   const [bracketFetched, setBracketFetched] = useState(false)
 
@@ -257,11 +264,22 @@ export default function TournamentDetailPage({
   const [generateLoading, setGenerateLoading] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
 
+  const [activeTab, setActiveTab] = useState('overview')
+
   // Derived role flags
   const userRole = user?.role ?? ''
   const isOrganizer = hasMinRole(userRole, 'organizer')
   const ownsThisTournament =
     isOrganizer && user?.id === tournament?.organizer_id
+
+  // Fetch bracket (used lazily and after generation)
+  const fetchBracket = useCallback(() => {
+    setBracketLoading(true)
+    getTournamentBracket(id)
+      .then((matches) => setBracket(matches))
+      .catch(() => setBracket([]))
+      .finally(() => setBracketLoading(false))
+  }, [id])
 
   // Fetch tournament on mount
   useEffect(() => {
@@ -271,16 +289,14 @@ export default function TournamentDetailPage({
       .finally(() => setPageLoading(false))
   }, [id])
 
-  // Fetch bracket lazily
-  function handleBracketTabSelect() {
+  // Fetch bracket once tournament has loaded and tab is active
+  useEffect(() => {
+    if (activeTab !== 'bracket') return
+    if (!tournament) return // wait for tournament to load first
     if (bracketFetched) return
     setBracketFetched(true)
-    setBracketLoading(true)
-    getTournamentBracket(id)
-      .then((matches) => setBracket(matches))
-      .catch(() => setBracket([]))
-      .finally(() => setBracketLoading(false))
-  }
+    fetchBracket()
+  }, [activeTab, tournament, bracketFetched, fetchBracket])
 
   // Fetch registrations lazily (organizer + owner only)
   function handleParticipantsTabSelect() {
@@ -294,7 +310,7 @@ export default function TournamentDetailPage({
   }
 
   function handleTabChange(value: string) {
-    if (value === 'bracket') handleBracketTabSelect()
+    setActiveTab(value)
     if (value === 'participants') handleParticipantsTabSelect()
   }
 
@@ -316,9 +332,15 @@ export default function TournamentDetailPage({
     setGenerateError(null)
     try {
       await generateBracket(id)
-      // Refresh bracket data
-      setBracketFetched(false)
+      // Refresh tournament status badge
+      getTournament(id).then((t) => setTournament(t)).catch(() => {})
+      // Reset bracket cache and refetch
+      setBracketFetched(true)
       setBracket(null)
+      fetchBracket()
+      // Switch to bracket tab
+      setActiveTab('bracket')
+      toast.success('Bracket generated successfully!')
     } catch {
       setGenerateError('Failed to generate bracket.')
     } finally {
@@ -347,17 +369,7 @@ export default function TournamentDetailPage({
       tournament.tournament_type === 'hybrid') &&
     (tournament.venue_name || tournament.venue_address)
 
-  // Group bracket matches by round
-  const bracketByRound: Record<number, BracketMatch[]> = {}
-  if (bracket) {
-    for (const match of bracket) {
-      if (!bracketByRound[match.round]) bracketByRound[match.round] = []
-      bracketByRound[match.round].push(match)
-    }
-  }
-  const rounds = Object.keys(bracketByRound)
-    .map(Number)
-    .sort((a, b) => a - b)
+  const rounds = bracket ?? []
 
   return (
     <div className="flex flex-col gap-6">
@@ -397,14 +409,20 @@ export default function TournamentDetailPage({
             {/* Organizer (owns): Generate Bracket + Edit */}
             {ownsThisTournament && (
               <>
-                <Button
-                  variant="outline"
-                  onClick={handleGenerateBracket}
-                  disabled={generateLoading}
-                >
-                  <RefreshCw size={15} />
-                  {generateLoading ? 'Generating…' : 'Generate Bracket'}
-                </Button>
+                {!['in_progress', 'ongoing', 'completed'].includes(tournament.status) && (
+                  <Button
+                    variant="outline"
+                    onClick={handleGenerateBracket}
+                    disabled={generateLoading}
+                  >
+                    {generateLoading ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      <RefreshCw size={15} />
+                    )}
+                    {generateLoading ? 'Generating…' : 'Generate Bracket'}
+                  </Button>
+                )}
                 <Button variant="outline" asChild>
                   <Link href={`/dashboard/tournaments/${id}/edit`}>
                     <Pencil size={15} />
@@ -451,7 +469,7 @@ export default function TournamentDetailPage({
       </div>
 
       {/* ── Tabs ── */}
-      <Tabs defaultValue="overview" onValueChange={handleTabChange}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="bracket">Bracket</TabsTrigger>
@@ -562,17 +580,16 @@ export default function TournamentDetailPage({
             </div>
           ) : (
             <div className="flex flex-col gap-8">
-              {rounds.map((round) => (
+              {rounds.map(({ round, matches }) => (
                 <div key={round} className="flex flex-col gap-3">
                   <h3 className="font-display text-lg text-text-primary">
                     Round {round}
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {bracketByRound[round].map((match) => (
+                    {matches.map((match) => (
                       <MatchCard
                         key={match.id}
                         match={match}
-                        winner={match.winner}
                       />
                     ))}
                   </div>
