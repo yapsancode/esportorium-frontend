@@ -32,7 +32,12 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/auth/login', { email, password })
       saveTokens(data.user, data.access_token, data.refresh_token)
-      router.push('/dashboard')
+      const PLAYER_ROLES = ['player', 'team_captain']
+      if (PLAYER_ROLES.includes(data.user.role)) {
+        router.push('/player/dashboard')
+      } else {
+        router.push('/dashboard')
+      }
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data

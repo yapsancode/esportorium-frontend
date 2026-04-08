@@ -15,7 +15,9 @@
       "Bash(ls -la /c/Users/isyra/Documents/coding_projects/esportorium-frontend/app/\\\\\\(dashboard\\\\\\)/)",
       "Bash(npx shadcn@latest add tabs --yes)",
       "Bash(rm:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(npm list:*)"
     ]
   }
 }

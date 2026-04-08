@@ -1,17 +1,39 @@
-import Image from "next/image";
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Cookies from 'js-cookie'
+import { useAuthStore } from '@/lib/store/authStore'
+
+const PLAYER_ROLES = ['player', 'team_captain']
+
 export default function Home() {
+  const router = useRouter()
+  const user = useAuthStore((s) => s.user)
+  const isLoading = useAuthStore((s) => s.isLoading)
+
+  useEffect(() => {
+    // Not logged in — send to login
+    if (!Cookies.get('refresh_token')) {
+      router.replace('/login')
+      return
+    }
+
+    // Wait until auth store resolves
+    if (isLoading) return
+
+    if (user && PLAYER_ROLES.includes(user.role)) {
+      router.replace('/player/dashboard')
+    } else {
+      router.replace('/dashboard')
+    }
+  }, [user, isLoading, router])
+
   return (
-    <main className="min-h-screen bg-background flex flex-col items-center justify-center gap-8 p-8">
-      <h1 className="text-6xl text-text-primary">Esportorium</h1>
-      <p className="text-text-secondary text-lg">Tournament platform for SEA esports</p>
-      <div className="flex gap-4">
-        <button className="bg-terra text-white px-6 py-3 rounded-lg font-sans">
-          Get Started
-        </button>
-        <button className="border border-terra text-terra px-6 py-3 rounded-lg font-sans">
-          Learn More
-        </button>
-      </div>
+    <main className="flex min-h-screen items-center justify-center bg-background">
+      <span className="font-display text-3xl tracking-widest text-terra">
+        ESPORTORIUM
+      </span>
     </main>
   )
 }
